@@ -5,7 +5,7 @@ package com.nicolas.autodelver.domain;
 public class Hero extends AbstractCombatant {
 
     // Delega a inicializacao e as validacoes defensivas para a superclasse.
-    public Hero(String name, int maxHp, int baseAttack) {
-        super(name, maxHp, baseAttack);
+    public Hero(String name, int maxHp, int baseAttack, int speed) {
+        super(name, maxHp, baseAttack, speed);
     }
 }

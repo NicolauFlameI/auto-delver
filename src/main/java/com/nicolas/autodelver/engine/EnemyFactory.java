@@ -43,7 +43,8 @@ public class EnemyFactory {
         // Formula: min + random(max - min + 1) para intervalo fechado inclusivo.
         int calculatedHp = archetype.getMinHp() + random.nextInt(archetype.getMaxHp() - archetype.getMinHp() + 1);
         int calculatedAttack = archetype.getMinAttack() + random.nextInt(archetype.getMaxAttack() - archetype.getMinAttack() + 1);
+        int calculatedSpeed = archetype.getMinSpeed() + random.nextInt(archetype.getMaxSpeed() - archetype.getMinSpeed() + 1);
 
-        return new Enemy(archetype.getDefaultName(), calculatedHp, calculatedAttack);
+        return new Enemy(archetype.getDefaultName(), calculatedHp, calculatedAttack, calculatedSpeed);
     }
 }

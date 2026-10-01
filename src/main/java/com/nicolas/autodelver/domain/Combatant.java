@@ -17,6 +17,9 @@ public interface Combatant {
     // Retorna a forca nominal que a entidade aplica em uma acao ofensiva.
     int getBaseAttack();
 
+    // Retorna a agilidade da entidade, definindo quem ataca primeiro no turno.
+    int getSpeed();
+
     // Metodo de negocio: verifica ativamente se a entidade continua operacional (hp > 0).
     boolean isAlive();
 

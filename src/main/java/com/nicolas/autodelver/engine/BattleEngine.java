@@ -32,16 +32,18 @@ public class BattleEngine {
         combatHistory.clear();
         int currentTurn = 1;
 
-        // Loop de simulacao: continua enquanto ambos tiverem HP > 0.
-        while (fighterA.isAlive() && fighterB.isAlive()) {
+        // Regra de Iniciativa: Compara a velocidade para definir a ordem estrutural do turno.
+        Combatant firstAttacker = fighterA.getSpeed() >= fighterB.getSpeed() ? fighterA : fighterB;
+        Combatant secondAttacker = firstAttacker == fighterA ? fighterB : fighterA;
 
-            // 1. Acao do Combatente A sobre o Combatente B.
-            resolveAction(fighterA, fighterB, currentTurn);
+        while (firstAttacker.isAlive() && secondAttacker.isAlive()) {
 
-            // 2. Validacao de Ciclo de Vida Ativo:
-            // Se B for derrotado pelo ataque de A, ele perde o direito de agir neste turno.
-            if (fighterB.isAlive()) {
-                resolveAction(fighterB, fighterA, currentTurn);
+            // 1. Acao de quem venceu a iniciativa.
+            resolveAction(firstAttacker, secondAttacker, currentTurn);
+
+            // 2. Validacao de Ciclo de Vida do segundo combatente antes do contra-ataque.
+            if (secondAttacker.isAlive()) {
+                resolveAction(secondAttacker, firstAttacker, currentTurn);
             }
 
             currentTurn++;

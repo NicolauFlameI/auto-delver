@@ -4,22 +4,24 @@ package com.nicolas.autodelver.domain;
 // Define os perfis de monstros disponiveis na masmorra e os seus limites de atributos.
 public enum EnemyArchetype {
 
-    GOBLIN("Goblin Saqueador", 30, 45, 8, 12),
-    ESQUELETO("Guerreiro Esqueleto", 40, 60, 10, 15),
-    ORC("Orc Brutamontes", 65, 90, 14, 20);
+    // Parametros: Nome, minHp, maxHp, minAtk, maxAtk, minSpeed, maxSpeed
+    GOBLIN("Goblin Saqueador", 30, 45, 8, 12, 14, 20),
+    ESQUELETO("Guerreiro Esqueleto", 40, 60, 10, 15, 5, 9),
+    ORC("Orc Brutamontes", 65, 90, 14, 20, 8, 12);
 
     private final String defaultName;
-    private final int minHp;
-    private final int maxHp;
-    private final int minAttack;
-    private final int maxAttack;
+    private final int minHp, maxHp;
+    private final int minAttack, maxAttack;
+    private final int minSpeed, maxSpeed;
 
-    EnemyArchetype(String defaultName, int minHp, int maxHp, int minAttack, int maxAttack) {
+    EnemyArchetype(String defaultName, int minHp, int maxHp, int minAttack, int maxAttack, int minSpeed, int maxSpeed) {
         this.defaultName = defaultName;
         this.minHp = minHp;
         this.maxHp = maxHp;
         this.minAttack = minAttack;
         this.maxAttack = maxAttack;
+        this.minSpeed = minSpeed;
+        this.maxSpeed = maxSpeed;
     }
 
     public String getDefaultName() {
@@ -41,4 +43,10 @@ public enum EnemyArchetype {
     public int getMaxAttack() {
         return maxAttack;
     }
+
+    public int getMinSpeed() {
+        return minSpeed; }
+
+    public int getMaxSpeed() {
+        return maxSpeed; }
 }

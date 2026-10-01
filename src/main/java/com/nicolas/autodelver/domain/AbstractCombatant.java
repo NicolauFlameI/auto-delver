@@ -8,12 +8,13 @@ public abstract class AbstractCombatant implements Combatant {
     private final String name;
     private final int maxHp;
     private final int baseAttack;
+    private final int speed;
 
     // Atributo mutavel controlado exclusivamente por metodos internos de negocio.
     private int currentHp;
 
     // Construtor protegido: apenas subclasses concretas podem invocar.
-    protected AbstractCombatant(String name, int maxHp, int baseAttack) {
+    protected AbstractCombatant(String name, int maxHp, int baseAttack, int speed) {
         // Metodologia: Programacao Defensiva (Fail-Fast).
         // Impede a criacao de combatentes em estado inconsistente na memoria.
         if (name == null || name.isBlank()) {
@@ -24,12 +25,15 @@ public abstract class AbstractCombatant implements Combatant {
         }
         if (baseAttack < 0) {
             throw new IllegalArgumentException("O valor de ataque base nao pode ser negativo.");
+        }if (speed < 0) {
+            throw new IllegalArgumentException("A velocidade nao pode ser negativa.");
         }
 
         this.name = name.trim();
         this.maxHp = maxHp;
         this.currentHp = maxHp;
         this.baseAttack = baseAttack;
+        this.speed = speed;
     }
 
     @Override
@@ -56,6 +60,11 @@ public abstract class AbstractCombatant implements Combatant {
     public boolean isAlive() {
         // Regra de negocio: vivo estritamente enquanto tiver pelo menos 1 ponto de HP.
         return this.currentHp > 0;
+    }
+
+    @Override
+    public int getSpeed() {
+        return speed;
     }
 
     @Override

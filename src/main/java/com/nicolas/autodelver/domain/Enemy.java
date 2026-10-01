@@ -4,7 +4,9 @@ package com.nicolas.autodelver.domain;
 public class Enemy extends AbstractCombatant {
 
     // Delega a inicializacao e as validacoes defensivas para a superclasse.
-    public Enemy(String name, int maxHp, int baseAttack) {
-        super(name, maxHp, baseAttack);
+    public Enemy(String name, int maxHp, int baseAttack, int speed) {
+        super(name, maxHp, baseAttack, speed);
     }
+
+
 }

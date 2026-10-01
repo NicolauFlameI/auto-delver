@@ -17,7 +17,7 @@ public class Main {
         System.out.println("==================================================\n");
 
         // 1. Criacao manual do Heroi do jogador.
-        Hero heroi = new Hero("Valerius o Paladino", 100, 18);
+        Hero heroi = new Hero("Valerius o Paladino", 100, 18, 15);
 
         // 2. Criacao procedimental do Inimigo atraves da Fabrica.
         EnemyFactory fabricaInimigos = new EnemyFactory();
