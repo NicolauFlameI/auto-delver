@@ -5,61 +5,75 @@ import java.util.Collections;
 import java.util.List;
 
 import com.nicolas.autodelver.domain.Combatant;
+import com.nicolas.autodelver.domain.Party;
 import com.nicolas.autodelver.domain.TurnLog;
 
 // Modulo de Dominio: Motor de Resolucao de Combates Autonomos.
-// Executa o confronto em memoria entre dois combatentes e produz um historico de turnos.
+// Executa o confronto em turnos entre duas equipes e gera o historico de eventos.
 public class BattleEngine {
 
-    // Lista mutavel interna que acumula os eventos gerados a cada acao ofensiva.
     private final List<TurnLog> combatHistory;
 
     public BattleEngine() {
         this.combatHistory = new ArrayList<>();
     }
 
-    // Metodologia: Execucao de Ciclo Fechado (Headless Simulation).
-    // Roda os turnos ate que um dos combatentes tenha seu HP zerado.
-    public Combatant simulateEncounter(Combatant fighterA, Combatant fighterB) {
-        // Validacao defensiva para impedir simulacao com dados nulos ou combatentes mortos.
-        if (fighterA == null || fighterB == null) {
-            throw new IllegalArgumentException("Ambos os combatentes devem ser nao-nulos para iniciar.");
+    // Processa a simulacao completa ate que uma das equipes seja completamente derrotada.
+    public Party simulateEncounter(Party partyA, Party partyB) {
+        if (partyA == null || partyB == null) {
+            throw new IllegalArgumentException("As equipes nao podem ser nulas.");
         }
-        if (!fighterA.isAlive() || !fighterB.isAlive()) {
-            throw new IllegalStateException("Ambos os combatentes devem estar vivos para combater.");
+        if (partyA.isDefeated() || partyB.isDefeated()) {
+            throw new IllegalStateException("Ambas as equipes devem ter membros vivos para iniciar o combate.");
         }
 
         combatHistory.clear();
         int currentTurn = 1;
 
-        // Regra de Iniciativa: Compara a velocidade para definir a ordem estrutural do turno.
-        Combatant firstAttacker = fighterA.getSpeed() >= fighterB.getSpeed() ? fighterA : fighterB;
-        Combatant secondAttacker = firstAttacker == fighterA ? fighterB : fighterA;
+        // O laco principal roda enquanto ambas as equipes tiverem sobreviventes
+        while (!partyA.isDefeated() && !partyB.isDefeated()) {
 
-        while (firstAttacker.isAlive() && secondAttacker.isAlive()) {
+            // 1. Determina a ordem de iniciativa global do turno atual
+            List<Combatant> turnOrder = new ArrayList<>();
+            turnOrder.addAll(partyA.getAliveMembers());
+            turnOrder.addAll(partyB.getAliveMembers());
 
-            // 1. Acao de quem venceu a iniciativa.
-            resolveAction(firstAttacker, secondAttacker, currentTurn);
+            // Ordena a lista decrescente com base na velocidade (maior age primeiro)
+            turnOrder.sort((c1, c2) -> Integer.compare(c2.getSpeed(), c1.getSpeed()));
 
-            // 2. Validacao de Ciclo de Vida do segundo combatente antes do contra-ataque.
-            if (secondAttacker.isAlive()) {
-                resolveAction(secondAttacker, firstAttacker, currentTurn);
+            // 2. Executa a acao de cada combatente na ordem estabelecida
+            for (Combatant attacker : turnOrder) {
+                // Validacao de Ciclo de Vida: se o atacante foi morto neste mesmo turno por alguem mais rapido, ele nao age.
+                if (!attacker.isAlive()) {
+                    continue;
+                }
+
+                // Interrompe o turno imediatamente se o combate ja foi decidido (uma equipe inteira caiu).
+                if (partyA.isDefeated() || partyB.isDefeated()) {
+                    break;
+                }
+
+                // Identifica aliados e inimigos com base na origem do atacante
+                Party enemyParty = partyA.getAllMembers().contains(attacker) ? partyB : partyA;
+
+                // Regra de Foco de Ataque (Auto-battler MVP): ataca a linha de frente (primeiro inimigo vivo)
+                Combatant target = enemyParty.getAliveMembers().get(0);
+
+                resolveAction(attacker, target, currentTurn);
             }
 
             currentTurn++;
         }
 
-        // Retorna a entidade sobrevivente como vencedora do confronto.
-        return fighterA.isAlive() ? fighterA : fighterB;
+        // Retorna a equipe que sobrou viva
+        return partyA.isDefeated() ? partyB : partyA;
     }
 
-    // Processa o disparo de um ataque individual e registra no historico.
     private void resolveAction(Combatant attacker, Combatant target, int turn) {
         int hpBefore = target.getCurrentHp();
         attacker.attack(target);
         int damageActual = hpBefore - target.getCurrentHp();
 
-        // Armazena o registro do turno gerado pela acao.
         combatHistory.add(new TurnLog(
                 turn,
                 attacker.getName(),
@@ -70,8 +84,6 @@ public class BattleEngine {
         ));
     }
 
-    // Metodologia: Copia Defensiva.
-    // Retorna uma visao imutavel da lista para impedir modificacao externa do historico.
     public List<TurnLog> getCombatHistory() {
         return Collections.unmodifiableList(combatHistory);
     }
