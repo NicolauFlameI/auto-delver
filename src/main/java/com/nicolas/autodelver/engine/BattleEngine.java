@@ -56,8 +56,9 @@ public class BattleEngine {
                 // Identifica aliados e inimigos com base na origem do atacante
                 Party enemyParty = partyA.getAllMembers().contains(attacker) ? partyB : partyA;
 
-                // Regra de Foco de Ataque (Auto-battler MVP): ataca a linha de frente (primeiro inimigo vivo)
-                Combatant target = enemyParty.getAliveMembers().get(0);
+                // O motor fornece os inimigos vivos, e o proprio atacante usa a sua estrategia para escolher o alvo
+                List availableTargets = enemyParty.getAliveMembers();
+                Combatant target = attacker.chooseTarget(enemyParty.getAliveMembers());
 
                 resolveAction(attacker, target, currentTurn);
             }

@@ -45,6 +45,7 @@ public class EnemyFactory {
         int calculatedAttack = archetype.getMinAttack() + random.nextInt(archetype.getMaxAttack() - archetype.getMinAttack() + 1);
         int calculatedSpeed = archetype.getMinSpeed() + random.nextInt(archetype.getMaxSpeed() - archetype.getMinSpeed() + 1);
 
-        return new Enemy(archetype.getDefaultName(), calculatedHp, calculatedAttack, calculatedSpeed);
+        return new Enemy(archetype.getDefaultName(), calculatedHp, calculatedAttack,
+                calculatedSpeed, archetype.getTargetingStrategy());
     }
 }

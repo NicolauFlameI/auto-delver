@@ -1,4 +1,5 @@
 package com.nicolas.autodelver.domain;
+import java.util.List;
 
 // Padrao de Projeto: Interface de Dominio (Tell, Don't Ask).
 // Define o contrato de comportamento universal que qualquer combatente precisa atender,
@@ -30,4 +31,7 @@ public interface Combatant {
     // Metodologia: Tell, Don't Ask.
     // Uma entidade atua diretamente sobre o alvo sem precisar consultar os dados dele previamente.
     void attack(Combatant target);
+
+    // Delega a escolha do alvo para a estrategia interna da entidade
+    Combatant chooseTarget(List<Combatant> opponents);
 }

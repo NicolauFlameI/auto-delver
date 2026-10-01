@@ -1,4 +1,6 @@
 package com.nicolas.autodelver.domain;
+import java.util.List;
+import com.nicolas.autodelver.domain.strategy.TargetingStrategy;
 
 // Metodologia: Heranca Abstrata (DRY - Don't Repeat Yourself).
 // Centraliza regras de integridade e calculo de vida comuns a herois e monstros.
@@ -9,14 +11,16 @@ public abstract class AbstractCombatant implements Combatant {
     private final int maxHp;
     private final int baseAttack;
     private final int speed;
+    private final TargetingStrategy targetingStrategy;
+
 
     // Atributo mutavel controlado exclusivamente por metodos internos de negocio.
     private int currentHp;
 
     // Construtor protegido: apenas subclasses concretas podem invocar.
-    protected AbstractCombatant(String name, int maxHp, int baseAttack, int speed) {
+    protected AbstractCombatant(String name, int maxHp, int baseAttack, int speed,
+                                TargetingStrategy targetingStrategy) {   // <-- novo parametro
         // Metodologia: Programacao Defensiva (Fail-Fast).
-        // Impede a criacao de combatentes em estado inconsistente na memoria.
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("O nome do combatente nao pode ser vazio ou nulo.");
         }
@@ -25,8 +29,13 @@ public abstract class AbstractCombatant implements Combatant {
         }
         if (baseAttack < 0) {
             throw new IllegalArgumentException("O valor de ataque base nao pode ser negativo.");
-        }if (speed < 0) {
+        }
+        if (speed < 0) {
             throw new IllegalArgumentException("A velocidade nao pode ser negativa.");
+        }
+        // ...validações...
+        if (targetingStrategy == null) {
+            throw new IllegalArgumentException("A estrategia de alvo nao pode ser nula.");
         }
 
         this.name = name.trim();
@@ -34,6 +43,13 @@ public abstract class AbstractCombatant implements Combatant {
         this.currentHp = maxHp;
         this.baseAttack = baseAttack;
         this.speed = speed;
+        this.targetingStrategy = targetingStrategy;
+    }
+
+    // Escolha de alvo delegada para a estrategia.
+    @Override
+    public Combatant chooseTarget(List<Combatant> opponents) {
+        return targetingStrategy.selectTarget(opponents);
     }
 
     @Override

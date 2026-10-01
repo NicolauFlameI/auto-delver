@@ -6,6 +6,8 @@ import com.nicolas.autodelver.domain.Party;
 import com.nicolas.autodelver.domain.TurnLog;
 import com.nicolas.autodelver.engine.BattleEngine;
 import com.nicolas.autodelver.engine.EnemyFactory;
+import com.nicolas.autodelver.domain.strategy.FrontlineStrategy;
+import com.nicolas.autodelver.domain.strategy.LowestHpStrategy;
 
 public class Main {
 
@@ -16,10 +18,10 @@ public class Main {
 
         // 1. Criacao da equipe do jogador
         Party playerParty = new Party("Comitiva da Luz");
-        // Tanker: Muita vida e dano, baixa velocidade
-        playerParty.addMember(new Hero("Valerius o Paladino", 120, 15, 10));
-        // DPS: Pouca vida, dano medio, alta velocidade
-        playerParty.addMember(new Hero("Elara a Arqueira", 60, 22, 25));
+        // Tanker: Muita vida e dano, baixa velocidade. Foca a linha de frente.
+        playerParty.addMember(new Hero("Valerius, o Paladino", 120, 15, 10, new FrontlineStrategy()));
+        // DPS: Pouca vida, dano medio, alta velocidade. Foca o inimigo mais fraco.
+        playerParty.addMember(new Hero("Elara, a Arqueira", 60, 22, 25, new LowestHpStrategy()));
 
         // 2. Criacao da horda inimiga procedimental
         Party enemyParty = new Party("Horda Sombria");

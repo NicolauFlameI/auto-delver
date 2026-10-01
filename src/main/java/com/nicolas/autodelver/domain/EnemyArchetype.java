@@ -1,20 +1,24 @@
 package com.nicolas.autodelver.domain;
 
-// Padrao de Projeto: Enum com Metadados de Dominio.
-// Define os perfis de monstros disponiveis na masmorra e os seus limites de atributos.
+import com.nicolas.autodelver.domain.strategy.FrontlineStrategy;
+import com.nicolas.autodelver.domain.strategy.LowestHpStrategy;
+import com.nicolas.autodelver.domain.strategy.TargetingStrategy;
+
 public enum EnemyArchetype {
 
-    // Parametros: Nome, minHp, maxHp, minAtk, maxAtk, minSpeed, maxSpeed
-    GOBLIN("Goblin Saqueador", 30, 45, 8, 12, 14, 20),
-    ESQUELETO("Guerreiro Esqueleto", 40, 60, 10, 15, 5, 9),
-    ORC("Orc Brutamontes", 65, 90, 14, 20, 8, 12);
+    // Parametros: Nome, minHp, maxHp, minAtk, maxAtk, minSpeed, maxSpeed, estrategia de alvo
+    GOBLIN("Goblin Saqueador", 30, 45, 8, 12, 14, 20, new LowestHpStrategy()),
+    ESQUELETO("Guerreiro Esqueleto", 40, 60, 10, 15, 5, 9, new FrontlineStrategy()),
+    ORC("Orc Brutamontes", 65, 90, 14, 20, 8, 12, new FrontlineStrategy());
 
     private final String defaultName;
     private final int minHp, maxHp;
     private final int minAttack, maxAttack;
     private final int minSpeed, maxSpeed;
+    private final TargetingStrategy targetingStrategy;
 
-    EnemyArchetype(String defaultName, int minHp, int maxHp, int minAttack, int maxAttack, int minSpeed, int maxSpeed) {
+    EnemyArchetype(String defaultName, int minHp, int maxHp, int minAttack, int maxAttack,
+                   int minSpeed, int maxSpeed, TargetingStrategy targetingStrategy) {
         this.defaultName = defaultName;
         this.minHp = minHp;
         this.maxHp = maxHp;
@@ -22,31 +26,30 @@ public enum EnemyArchetype {
         this.maxAttack = maxAttack;
         this.minSpeed = minSpeed;
         this.maxSpeed = maxSpeed;
+        this.targetingStrategy = targetingStrategy;
     }
 
     public String getDefaultName() {
-        return defaultName;
-    }
+        return defaultName; }
 
     public int getMinHp() {
-        return minHp;
-    }
+        return minHp; }
 
     public int getMaxHp() {
-        return maxHp;
-    }
+        return maxHp; }
 
     public int getMinAttack() {
-        return minAttack;
-    }
+        return minAttack; }
 
     public int getMaxAttack() {
-        return maxAttack;
-    }
+        return maxAttack; }
 
     public int getMinSpeed() {
         return minSpeed; }
 
     public int getMaxSpeed() {
         return maxSpeed; }
+
+    public TargetingStrategy getTargetingStrategy() {
+        return targetingStrategy; }
 }
