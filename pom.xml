@@ -13,6 +13,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Configura a release para compilar nativamente em Java 21 -->
         <maven.compiler.release>21</maven.compiler.release>
+        <!-- NOVO: versao do libGDX em um unico lugar; as 3 dependencias abaixo a reutilizam.
+             Para atualizar o libGDX no futuro, basta mudar esta linha. -->
+        <gdx.version>1.14.2</gdx.version>
     </properties>
 
     <dependencies>
@@ -21,6 +24,29 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.7.3</version>
+        </dependency>
+
+        <!-- NOVO: nucleo do libGDX (API de desenho, input, assets, matematica) -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx</artifactId>
+            <version>${gdx.version}</version>
+        </dependency>
+
+        <!-- NOVO: backend desktop (LWJGL3). Cria a janela e o contexto OpenGL no PC. -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-backend-lwjgl3</artifactId>
+            <version>${gdx.version}</version>
+        </dependency>
+
+        <!-- NOVO: bibliotecas nativas (.so/.dll/.dylib) que o libGDX usa no desktop.
+             O classifier "natives-desktop" traz os binarios de Linux, Windows e macOS. -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-platform</artifactId>
+            <version>${gdx.version}</version>
+            <classifier>natives-desktop</classifier>
         </dependency>
     </dependencies>
 
