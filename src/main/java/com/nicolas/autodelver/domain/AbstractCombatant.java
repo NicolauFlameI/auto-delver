@@ -1,6 +1,7 @@
 package com.nicolas.autodelver.domain;
 import java.util.List;
 import com.nicolas.autodelver.domain.strategy.TargetingStrategy;
+import java.util.UUID;
 
 // Metodologia: Heranca Abstrata (DRY - Don't Repeat Yourself).
 // Centraliza regras de integridade e calculo de vida comuns a herois e monstros.
@@ -12,6 +13,7 @@ public abstract class AbstractCombatant implements Combatant {
     private final int baseAttack;
     private final int speed;
     private final TargetingStrategy targetingStrategy;
+    private final String id;
 
 
     // Atributo mutavel controlado exclusivamente por metodos internos de negocio.
@@ -38,6 +40,7 @@ public abstract class AbstractCombatant implements Combatant {
             throw new IllegalArgumentException("A estrategia de alvo nao pode ser nula.");
         }
 
+        this.id = UUID.randomUUID().toString();
         this.name = name.trim();
         this.maxHp = maxHp;
         this.currentHp = maxHp;
@@ -45,6 +48,9 @@ public abstract class AbstractCombatant implements Combatant {
         this.speed = speed;
         this.targetingStrategy = targetingStrategy;
     }
+
+    @Override
+    public String getId() { return id; }
 
     // Escolha de alvo delegada para a estrategia.
     @Override

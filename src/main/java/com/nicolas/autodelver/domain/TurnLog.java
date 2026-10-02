@@ -6,7 +6,9 @@ package com.nicolas.autodelver.domain;
 
 public record TurnLog(
         int turnNumber,
+        String attackerId, // Novo
         String attackerName,
+        String targetId,   // Novo
         String targetName,
         int damageDealt,
         int targetRemainingHp,

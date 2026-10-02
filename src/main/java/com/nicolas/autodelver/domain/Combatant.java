@@ -9,6 +9,9 @@ public interface Combatant {
     // Retorna o identificador textual da entidade.
     String getName();
 
+    // Adicione a consulta de identificador unico
+    String getId();
+
     // Consulta de integridade: retorna a vida restante atual.
     int getCurrentHp();
 

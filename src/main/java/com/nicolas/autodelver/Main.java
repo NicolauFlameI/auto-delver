@@ -1,13 +1,15 @@
 package com.nicolas.autodelver;
 
+import java.util.List;
+
 import com.nicolas.autodelver.domain.Combatant;
 import com.nicolas.autodelver.domain.Hero;
 import com.nicolas.autodelver.domain.Party;
 import com.nicolas.autodelver.domain.TurnLog;
 import com.nicolas.autodelver.engine.BattleEngine;
 import com.nicolas.autodelver.engine.EnemyFactory;
-import com.nicolas.autodelver.domain.strategy.FrontlineStrategy;
-import com.nicolas.autodelver.domain.strategy.LowestHpStrategy;
+import com.nicolas.autodelver.infrastructure.persistence.HeroDao;
+import com.nicolas.autodelver.infrastructure.persistence.HeroDaoJdbc;
 
 public class Main {
 
@@ -16,12 +18,30 @@ public class Main {
         System.out.println("        AUTO-DELVER - SIMULADOR DE BATALHAS       ");
         System.out.println("==================================================\n");
 
-        // 1. Criacao da equipe do jogador
+        // 1. Criacao da equipe do jogador a partir do Banco de Dados
         Party playerParty = new Party("Comitiva da Luz");
-        // Tanker: Muita vida e dano, baixa velocidade. Foca a linha de frente.
-        playerParty.addMember(new Hero("Valerius, o Paladino", 120, 15, 10, new FrontlineStrategy()));
-        // DPS: Pouca vida, dano medio, alta velocidade. Foca o inimigo mais fraco.
-        playerParty.addMember(new Hero("Elara, a Arqueira", 60, 22, 25, new LowestHpStrategy()));
+
+        // Instancia a implementacao JDBC escondida atras da interface DAO
+        HeroDao heroDao = new HeroDaoJdbc();
+
+        try {
+            List<Hero> registeredHeroes = heroDao.findAll();   // <-- corrigido
+
+            if (registeredHeroes.isEmpty()) {
+                System.out.println("Aviso: Nenhum heroi encontrado no banco de dados.");
+                System.out.println("Insira registros na tabela 'heroes' via DBeaver para iniciar.");
+                return;
+            }
+
+            // Popula a equipe com as instâncias carregadas da infraestrutura
+
+            for (Hero hero : registeredHeroes) {
+                playerParty.addMember(hero);
+            }
+        } catch (RuntimeException e) {
+            System.err.println("Falha critica ao carregar herois: " + e.getMessage());
+            return; // Interrompe o jogo se o banco estiver fora do ar ou com credenciais incorretas
+        }
 
         // 2. Criacao da horda inimiga procedimental
         Party enemyParty = new Party("Horda Sombria");

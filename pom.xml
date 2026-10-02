@@ -15,6 +15,15 @@
         <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
+    <dependencies>
+        <!-- Driver JDBC do PostgreSQL -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.3</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <!-- Plugin padrao de compilacao do Maven configurado para o Java 21 -->
@@ -24,6 +33,11 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>21</release>
+                    <compilerArgs>
+                        <arg>-Xlint:unchecked</arg>
+                        <arg>-Xlint:rawtypes</arg>
+                        <arg>-Werror</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
         </plugins>

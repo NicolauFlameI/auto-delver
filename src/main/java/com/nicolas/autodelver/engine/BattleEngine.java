@@ -77,7 +77,9 @@ public class BattleEngine {
 
         combatHistory.add(new TurnLog(
                 turn,
+                attacker.getId(),
                 attacker.getName(),
+                target.getId(),
                 target.getName(),
                 damageActual,
                 target.getCurrentHp(),
