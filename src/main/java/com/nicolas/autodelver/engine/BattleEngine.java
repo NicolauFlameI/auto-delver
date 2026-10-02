@@ -12,13 +12,19 @@ import com.nicolas.autodelver.domain.TurnLog;
 // Executa o confronto em turnos entre duas equipes e gera o historico de eventos.
 public class BattleEngine {
 
+    // Limite de seguranca: se a luta passar disso, consideramos empate tecnico.
+    // Evita laco infinito quando ninguem consegue causar dano (ex: todos com ataque 0).
+    private static final int MAX_TURNS = 1000;
+
+    // Historico de golpes da ultima simulacao (campo restaurado).
     private final List<TurnLog> combatHistory;
 
+    // Construtor restaurado: sem ele a lista seria null e causaria NullPointerException.
     public BattleEngine() {
         this.combatHistory = new ArrayList<>();
     }
 
-    // Processa a simulacao completa ate que uma das equipes seja completamente derrotada.
+    // Processa a simulacao completa ate que uma das equipes seja derrotada.
     public Party simulateEncounter(Party partyA, Party partyB) {
         if (partyA == null || partyB == null) {
             throw new IllegalArgumentException("As equipes nao podem ser nulas.");
@@ -27,38 +33,42 @@ public class BattleEngine {
             throw new IllegalStateException("Ambas as equipes devem ter membros vivos para iniciar o combate.");
         }
 
+        // Limpa o historico de uma simulacao anterior, caso o motor seja reutilizado.
         combatHistory.clear();
         int currentTurn = 1;
 
-        // O laco principal roda enquanto ambas as equipes tiverem sobreviventes
         while (!partyA.isDefeated() && !partyB.isDefeated()) {
 
-            // 1. Determina a ordem de iniciativa global do turno atual
+            // Guarda anti-loop: aborta a simulacao se o combate nao termina.
+            if (currentTurn > MAX_TURNS) {
+                throw new IllegalStateException(
+                        "Combate abortado: limite de " + MAX_TURNS + " turnos atingido (empate tecnico).");
+            }
+
+            // Monta a ordem de iniciativa com todos os combatentes vivos.
             List<Combatant> turnOrder = new ArrayList<>();
             turnOrder.addAll(partyA.getAliveMembers());
             turnOrder.addAll(partyB.getAliveMembers());
 
-            // Ordena a lista decrescente com base na velocidade (maior age primeiro)
+            // Maior velocidade age primeiro. O sort e estavel: em empate, a Party A age antes.
             turnOrder.sort((c1, c2) -> Integer.compare(c2.getSpeed(), c1.getSpeed()));
 
-            // 2. Executa a acao de cada combatente na ordem estabelecida
             for (Combatant attacker : turnOrder) {
-                // Validacao de Ciclo de Vida: se o atacante foi morto neste mesmo turno por alguem mais rapido, ele nao age.
+                // Quem morreu durante este turno nao age.
                 if (!attacker.isAlive()) {
                     continue;
                 }
-
-                // Interrompe o turno imediatamente se o combate ja foi decidido (uma equipe inteira caiu).
+                // Se uma equipe inteira caiu, o combate ja acabou.
                 if (partyA.isDefeated() || partyB.isDefeated()) {
                     break;
                 }
 
-                // Identifica aliados e inimigos com base na origem do atacante
+                // Descobre qual e a equipe adversaria do atacante.
                 Party enemyParty = partyA.getAllMembers().contains(attacker) ? partyB : partyA;
 
-                // O motor fornece os inimigos vivos, e o proprio atacante usa a sua estrategia para escolher o alvo
-                List availableTargets = enemyParty.getAliveMembers();
-                Combatant target = attacker.chooseTarget(enemyParty.getAliveMembers());
+                // O motor entrega os alvos vivos; o atacante escolhe usando a propria estrategia.
+                List<Combatant> availableTargets = enemyParty.getAliveMembers();
+                Combatant target = attacker.chooseTarget(availableTargets);
 
                 resolveAction(attacker, target, currentTurn);
             }
@@ -66,10 +76,11 @@ public class BattleEngine {
             currentTurn++;
         }
 
-        // Retorna a equipe que sobrou viva
+        // Retorna a equipe que sobrou viva.
         return partyA.isDefeated() ? partyB : partyA;
     }
 
+    // Executa um ataque e registra no historico quanto dano foi realmente causado.
     private void resolveAction(Combatant attacker, Combatant target, int turn) {
         int hpBefore = target.getCurrentHp();
         attacker.attack(target);
@@ -87,6 +98,7 @@ public class BattleEngine {
         ));
     }
 
+    // Devolve o historico como lista somente leitura, protegendo o estado interno.
     public List<TurnLog> getCombatHistory() {
         return Collections.unmodifiableList(combatHistory);
     }
