@@ -1,5 +1,6 @@
 package com.nicolas.autodelver.ui;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -25,54 +28,66 @@ public class AutoDelverGame extends ApplicationAdapter {
     private ShapeRenderer shapeRenderer;
     private OrthographicCamera camera;
     private FitViewport viewport;
+    private BitmapFont damageFont;
+    private BitmapFont logFont;
 
-    // Texturas para cada arquetipo
-    private Texture paladinoTexture;
-    private Texture arqueiraTexture;
-    private Texture esqueletoTexture;
-    private Texture goblinTexture;
-    private Texture orcTexture;
+    // Animacoes de Idle para cada arquetipo
+    private Animation< Texture > paladinoIdle;
+    private Animation< Texture > arqueiraIdle;
+    private Animation< Texture > esqueletoIdle;
+    private Animation< Texture > goblinIdle;
+    private Animation< Texture > orcIdle;
 
-    // Tamanho do "mundo" do jogo
+    private final List< Texture > loadedTextures = new ArrayList<>();
+    private final List< FloatingText > floatingTexts = new ArrayList<>();
+
+    // Resolucao virtual do mundo (16:9)
     private static final float VIRTUAL_WIDTH = 320f;
     private static final float VIRTUAL_HEIGHT = 180f;
 
-    // Paleta
+    // Paleta de cores
     private static final Color BACKGROUND = Color.valueOf("0F0D1A");
     private static final Color DEAD_COLOR = Color.valueOf("4B4A6E");
     private static final Color BAR_BACKGROUND = Color.valueOf("2A2540");
     private static final Color HP_GREEN = Color.valueOf("5FB356");
     private static final Color HP_YELLOW = Color.valueOf("F2C94C");
     private static final Color HP_RED = Color.valueOf("C23B3B");
+    private static final Color DAMAGE_TEXT_COLOR = Color.valueOf("FF4D4D");
+    private static final Color HUD_BG_COLOR = Color.valueOf("181425");
+    private static final Color HUD_BORDER_COLOR = Color.valueOf("3A3554");
+    private static final Color HUD_TEXT_COLOR = Color.valueOf("E0DEF4");
 
-    // Medidas do desenho
-    private static final float SPRITE_SIZE = 16f;
+    // Medidas e posicoes dos combatentes
     private static final float BAR_WIDTH = 24f;
     private static final float BAR_HEIGHT = 3f;
-    private static final float ROW_SPACING = 40f;
+    private static final float ROW_SPACING = 38f;
     private static final float HERO_X = 60f;
     private static final float ENEMY_X = 244f;
 
-    // Tempos da reproducao
+    // Medidas do painel de log (HUD)
+    private static final float HUD_X = 14f;
+    private static final float HUD_Y = 6f;
+    private static final float HUD_WIDTH = 292f;
+    private static final float HUD_HEIGHT = 20f;
+
+    // Tempos de reproducao e animacao
     private static final float SECONDS_PER_ACTION = 0.8f;
     private static final float FLASH_DURATION = 0.15f;
+    private static final float IDLE_FRAME_DURATION = 0.15f;
 
     private final Party heroParty;
     private final Party enemyParty;
-    private final List<TurnLog> history;
-    private final Map<String, Integer> displayedHp = new HashMap<>();
-
+    private final List< TurnLog > history;
+    private final Map< String, Integer > displayedHp = new HashMap<>();
 
     private int nextLogIndex = 0;
     private float actionTimer = 0f;
     private float flashTimer = 0f;
     private String flashTargetId = null;
+    private float stateTime = 0f;
+    private String currentLogText = "Iniciando simulacao de batalha...";
 
-    public AutoDelverGame(
-            Party heroParty,
-            Party enemyParty,
-            List<TurnLog> history
-    ) {
+    public AutoDelverGame(Party heroParty, Party enemyParty, List< TurnLog > history) {
         this.heroParty = heroParty;
         this.enemyParty = enemyParty;
         this.history = history;
@@ -80,12 +95,10 @@ public class AutoDelverGame extends ApplicationAdapter {
         for (Combatant c : heroParty.getAllMembers()) {
             displayedHp.put(c.getId(), c.getMaxHp());
         }
-
         for (Combatant c : enemyParty.getAllMembers()) {
             displayedHp.put(c.getId(), c.getMaxHp());
         }
     }
-
 
     @Override
     public void create() {
@@ -95,12 +108,34 @@ public class AutoDelverGame extends ApplicationAdapter {
         viewport = new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, camera);
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
-        // Carrega as texturas.
-        paladinoTexture = new Texture(Gdx.files.internal("assets/frames/knight_m_idle_anim_f0.png"));
-        arqueiraTexture = new Texture(Gdx.files.internal("assets/frames/elf_m_idle_anim_f0.png"));
-        esqueletoTexture = new Texture(Gdx.files.internal("assets/frames/skelet_idle_anim_f0.png"));
-        goblinTexture = new Texture(Gdx.files.internal("assets/frames/goblin_idle_anim_f0.png"));
-        orcTexture = new Texture(Gdx.files.internal("assets/frames/orc_warrior_idle_anim_f0.png"));
+        // Fonte dos numeros flutuantes
+        damageFont = new BitmapFont();
+        damageFont.getData().setScale(0.42f);
+        damageFont.setUseIntegerPositions(false);
+
+        // Fonte da caixa de log inferior
+        logFont = new BitmapFont();
+        logFont.getData().setScale(0.38f);
+        logFont.setUseIntegerPositions(false);
+
+        // Carrega os 4 quadros (f0 a f3) de cada animacao
+        paladinoIdle = loadAnimation("knight_m_idle", IDLE_FRAME_DURATION);
+        arqueiraIdle = loadAnimation("elf_m_idle", IDLE_FRAME_DURATION);
+        esqueletoIdle = loadAnimation("skelet_idle", IDLE_FRAME_DURATION);
+        goblinIdle = loadAnimation("goblin_idle", IDLE_FRAME_DURATION);
+        orcIdle = loadAnimation("orc_warrior_idle", IDLE_FRAME_DURATION);
+    }
+
+    private Animation< Texture > loadAnimation(String prefix, float frameDuration) {
+        Texture[] frames = new Texture[4];
+        for (int i = 0; i < 4; i++) {
+            Texture tex = new Texture(Gdx.files.internal("assets/frames/" + prefix + "_anim_f" + i + ".png"));
+            frames[i] = tex;
+            loadedTextures.add(tex);
+        }
+        Animation< Texture > animation = new Animation<>(frameDuration, frames);
+        animation.setPlayMode(Animation.PlayMode.LOOP);
+        return animation;
     }
 
     @Override
@@ -110,24 +145,35 @@ public class AutoDelverGame extends ApplicationAdapter {
 
     @Override
     public void render() {
-        updateReplay(Gdx.graphics.getDeltaTime());
+        float delta = Gdx.graphics.getDeltaTime();
+        stateTime += delta;
+        updateReplay(delta);
+        updateFloatingTexts(delta);
 
         ScreenUtils.clear(BACKGROUND);
         viewport.apply();
 
-        // 1. FASE DE DESENHO DAS IMAGENS (SPRITES)
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        drawPartySprites(heroParty, HERO_X, false);
-        drawPartySprites(enemyParty, ENEMY_X, true); // true = espelha a imagem para olhar para a esquerda
-        batch.end();
-
-        // 2. FASE DE DESENHO DAS FORMAS GEOMETRICAS (BARRAS DE HP)
+        // 1. FORMAS GEOMETRICAS (Fundo da HUD, bordas e barras de vida)
         shapeRenderer.setProjectionMatrix(camera.combined);
+
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        drawHudPanel();
         drawPartyHpBars(heroParty, HERO_X);
         drawPartyHpBars(enemyParty, ENEMY_X);
         shapeRenderer.end();
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        drawHudBorder();
+        shapeRenderer.end();
+
+        // 2. TEXTURAS E TEXTO (Sprites, texto flutuante e narrativa do log)
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        drawPartySprites(heroParty, HERO_X, false);
+        drawPartySprites(enemyParty, ENEMY_X, true);
+        drawFloatingTexts();
+        drawHudText();
+        batch.end();
     }
 
     private void updateReplay(float delta) {
@@ -147,25 +193,111 @@ public class AutoDelverGame extends ApplicationAdapter {
             displayedHp.put(log.targetId(), log.targetRemainingHp());
             flashTargetId = log.targetId();
             flashTimer = FLASH_DURATION;
+
+            // Atualiza o texto narrativo na HUD
+            String defeatedText = log.targetDefeated() ? " (Derrotado!)" : "";
+            currentLogText = log.attackerName() + " atacou " + log.targetName()
+                    + " causando " + log.damageDealt() + " de dano" + defeatedText;
+
+            // Se for o ultimo log, determina o vencedor pelo HP exibido na tela
+            if (nextLogIndex >= history.size()) {
+                boolean heroesWon = isPartyAlive(heroParty);
+                currentLogText = heroesWon ? "Vitoria dos Herois! Masmorra concluida." : "Derrota! A equipe sucumbiu.";
+            }
+
+            // Dispara o dano flutuante
+            if (log.damageDealt() > 0) {
+                float[] targetPos = getCombatantCoordinates(log.targetId());
+                floatingTexts.add(new FloatingText(
+                        "-" + log.damageDealt(),
+                        targetPos[0] + 2f,
+                        targetPos[1] + 32f,
+                        0.75f,
+                        DAMAGE_TEXT_COLOR
+                ));
+            }
         }
     }
 
-    // Mapeamento visual das classes do Dominio
-    private Texture getTextureForCombatant(Combatant c) {
-        String name = c.getName().toLowerCase();
-        if (name.contains("paladino")) return paladinoTexture;
-        if (name.contains("arqueira")) return arqueiraTexture;
-        if (name.contains("esqueleto")) return esqueletoTexture;
-        if (name.contains("goblin")) return goblinTexture;
-        if (name.contains("orc")) return orcTexture;
+    private boolean isPartyAlive(Party party) {
+        for (Combatant c : party.getAllMembers()) {
+            if (displayedHp.getOrDefault(c.getId(), 0) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        return paladinoTexture; // Textura de fallback
+    private void updateFloatingTexts(float delta) {
+        for (int i = floatingTexts.size() - 1; i >= 0; i--) {
+            FloatingText ft = floatingTexts.get(i);
+            ft.y += 18f * delta;
+            ft.remainingTime -= delta;
+            if (ft.remainingTime <= 0f) {
+                floatingTexts.remove(i);
+            }
+        }
+    }
+
+    private void drawFloatingTexts() {
+        for (FloatingText ft : floatingTexts) {
+            float alpha = Math.max(0f, ft.remainingTime / ft.totalDuration);
+            damageFont.setColor(ft.color.r, ft.color.g, ft.color.b, alpha);
+            damageFont.draw(batch, ft.text, ft.x, ft.y);
+        }
+        damageFont.setColor(Color.WHITE);
+    }
+
+    private void drawHudPanel() {
+        shapeRenderer.setColor(HUD_BG_COLOR);
+        shapeRenderer.rect(HUD_X, HUD_Y, HUD_WIDTH, HUD_HEIGHT);
+    }
+
+    private void drawHudBorder() {
+        shapeRenderer.setColor(HUD_BORDER_COLOR);
+        shapeRenderer.rect(HUD_X, HUD_Y, HUD_WIDTH, HUD_HEIGHT);
+    }
+
+    private void drawHudText() {
+        logFont.setColor(HUD_TEXT_COLOR);
+        logFont.draw(batch, currentLogText, HUD_X + 8f, HUD_Y + 14f);
+    }
+
+    private float[] getCombatantCoordinates(String id) {
+        List< Combatant > heroes = heroParty.getAllMembers();
+        float heroTopY = (VIRTUAL_HEIGHT + 24f) / 2f + ((heroes.size() - 1) * ROW_SPACING) / 2f;
+        for (int i = 0; i < heroes.size(); i++) {
+            if (heroes.get(i).getId().equals(id)) {
+                return new float[] { HERO_X, heroTopY - (i * ROW_SPACING) };
+            }
+        }
+
+        List< Combatant > enemies = enemyParty.getAllMembers();
+        float enemyTopY = (VIRTUAL_HEIGHT + 24f) / 2f + ((enemies.size() - 1) * ROW_SPACING) / 2f;
+        for (int i = 0; i < enemies.size(); i++) {
+            if (enemies.get(i).getId().equals(id)) {
+                return new float[] { ENEMY_X, enemyTopY - (i * ROW_SPACING) };
+            }
+        }
+
+        return new float[] { VIRTUAL_WIDTH / 2f, VIRTUAL_HEIGHT / 2f };
+    }
+
+    private Animation< Texture > getAnimationForCombatant(Combatant c) {
+        String name = c.getName().toLowerCase();
+        if (name.contains("paladino")) return paladinoIdle;
+        if (name.contains("arqueira")) return arqueiraIdle;
+        if (name.contains("esqueleto")) return esqueletoIdle;
+        if (name.contains("goblin")) return goblinIdle;
+        if (name.contains("orc")) return orcIdle;
+
+        return paladinoIdle;
     }
 
     private void drawPartySprites(Party party, float x, boolean flipX) {
-        List <Combatant> members = party.getAllMembers();
+        List< Combatant > members = party.getAllMembers();
         float totalHeight = (members.size() - 1) * ROW_SPACING;
-        float topY = VIRTUAL_HEIGHT / 2f + totalHeight / 2f;
+        float topY = (VIRTUAL_HEIGHT + 24f) / 2f + totalHeight / 2f;
 
         for (int i = 0; i < members.size(); i++) {
             Combatant member = members.get(i);
@@ -180,29 +312,32 @@ public class AutoDelverGame extends ApplicationAdapter {
                 batch.setColor(Color.WHITE);
             }
 
-            Texture tex = getTextureForCombatant(member);
-            float w = tex.getWidth();
-            float h = tex.getHeight();
+            Animation< Texture > anim = getAnimationForCombatant(member);
+            Texture currentFrame = (hp <= 0) ? anim.getKeyFrames()[0] : anim.getKeyFrame(stateTime, true);
 
-            // Desenha com as dimensoes reais do arquivo PNG (sem distorcao)
-            batch.draw(tex, x, y, w, h, 0, 0, (int) w, (int) h, flipX, false);
+            float w = currentFrame.getWidth();
+            float h = currentFrame.getHeight();
+
+            batch.draw(currentFrame, x, y, w, h, 0, 0, (int) w, (int) h, flipX, false);
         }
         batch.setColor(Color.WHITE);
     }
 
     private void drawPartyHpBars(Party party, float x) {
-        List <Combatant> members = party.getAllMembers();
+        List< Combatant > members = party.getAllMembers();
         float totalHeight = (members.size() - 1) * ROW_SPACING;
-        float topY = VIRTUAL_HEIGHT / 2f + totalHeight / 2f;
+        float topY = (VIRTUAL_HEIGHT + 24f) / 2f + totalHeight / 2f;
 
         for (int i = 0; i < members.size(); i++) {
             Combatant member = members.get(i);
             float y = topY - i * ROW_SPACING;
             int hp = displayedHp.getOrDefault(member.getId(), member.getMaxHp());
 
-            Texture tex = getTextureForCombatant(member);
-            float barX = x + (tex.getWidth() / 2f) - (BAR_WIDTH / 2f);
-            float barY = y + tex.getHeight() + 3f;
+            Animation< Texture > anim = getAnimationForCombatant(member);
+            Texture currentFrame = anim.getKeyFrames()[0];
+
+            float barX = x + (currentFrame.getWidth() / 2f) - (BAR_WIDTH / 2f);
+            float barY = y + currentFrame.getHeight() + 3f;
 
             drawHpBar(barX, barY, hp, member.getMaxHp());
         }
@@ -231,10 +366,28 @@ public class AutoDelverGame extends ApplicationAdapter {
     public void dispose() {
         batch.dispose();
         shapeRenderer.dispose();
-        paladinoTexture.dispose();
-        arqueiraTexture.dispose();
-        esqueletoTexture.dispose();
-        goblinTexture.dispose();
-        orcTexture.dispose();
+        damageFont.dispose();
+        logFont.dispose();
+        for (Texture tex : loadedTextures) {
+            tex.dispose();
+        }
+    }
+
+    private static class FloatingText {
+        private final String text;
+        private final float x;
+        private float y;
+        private float remainingTime;
+        private final float totalDuration;
+        private final Color color;
+
+        public FloatingText(String text, float x, float y, float duration, Color color) {
+            this.text = text;
+            this.x = x;
+            this.y = y;
+            this.remainingTime = duration;
+            this.totalDuration = duration;
+            this.color = color;
+        }
     }
 }
