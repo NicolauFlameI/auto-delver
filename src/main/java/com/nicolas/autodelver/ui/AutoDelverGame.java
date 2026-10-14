@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
@@ -31,6 +32,13 @@ public class AutoDelverGame extends ApplicationAdapter {
     private BitmapFont damageFont;
     private BitmapFont logFont;
 
+    // Texturas do cenario (Masmorra)
+    private Texture[] floorTiles;
+    private Texture wallMid;
+    private Texture wallTopMid;
+    private Texture wallBannerRed;
+    private int[][] floorGrid;
+
     // Animacoes de Idle para cada arquetipo
     private Animation< Texture > paladinoIdle;
     private Animation< Texture > arqueiraIdle;
@@ -41,12 +49,16 @@ public class AutoDelverGame extends ApplicationAdapter {
     private final List< Texture > loadedTextures = new ArrayList<>();
     private final List< FloatingText > floatingTexts = new ArrayList<>();
 
-    // Resolucao virtual do mundo (16:9)
+    // Resolucao virtual do mundo (16:9) e tamanho do ladrilho
     private static final float VIRTUAL_WIDTH = 320f;
     private static final float VIRTUAL_HEIGHT = 180f;
+    private static final int TILE_SIZE = 16;
+    private static final int GRID_COLS = 20; // 320 / 16
+    private static final int GRID_ROWS = 12; // Cobre os 180 de altura
 
     // Paleta de cores
     private static final Color BACKGROUND = Color.valueOf("0F0D1A");
+    private static final Color DUNGEON_TINT = Color.valueOf("9A94B8"); // Escurece o chao para destacar os personagens
     private static final Color DEAD_COLOR = Color.valueOf("4B4A6E");
     private static final Color BAR_BACKGROUND = Color.valueOf("2A2540");
     private static final Color HP_GREEN = Color.valueOf("5FB356");
@@ -60,7 +72,7 @@ public class AutoDelverGame extends ApplicationAdapter {
     // Medidas e posicoes dos combatentes
     private static final float BAR_WIDTH = 24f;
     private static final float BAR_HEIGHT = 3f;
-    private static final float ROW_SPACING = 38f;
+    private static final float ROW_SPACING = 36f;
     private static final float HERO_X = 60f;
     private static final float ENEMY_X = 244f;
 
@@ -118,6 +130,9 @@ public class AutoDelverGame extends ApplicationAdapter {
         logFont.getData().setScale(0.38f);
         logFont.setUseIntegerPositions(false);
 
+        // Carrega texturas da masmorra
+        loadDungeonAssets();
+
         // Carrega os 4 quadros (f0 a f3) de cada animacao
         paladinoIdle = loadAnimation("knight_m_idle", IDLE_FRAME_DURATION);
         arqueiraIdle = loadAnimation("elf_m_idle", IDLE_FRAME_DURATION);
@@ -126,12 +141,39 @@ public class AutoDelverGame extends ApplicationAdapter {
         orcIdle = loadAnimation("orc_warrior_idle", IDLE_FRAME_DURATION);
     }
 
+    private void loadDungeonAssets() {
+        floorTiles = new Texture[8];
+        for (int i = 0; i < 8; i++) {
+            floorTiles[i] = loadSingleTexture("floor_" + (i + 1) + ".png");
+        }
+        wallMid = loadSingleTexture("wall_mid.png");
+        wallTopMid = loadSingleTexture("wall_top_mid.png");
+        wallBannerRed = loadSingleTexture("wall_banner_red.png");
+
+        // Gera o mosaico do piso (75% piso liso floor_1, 25% pisos rachados/variados)
+        floorGrid = new int[GRID_ROWS][GRID_COLS];
+        Random rng = new Random(42L); // Semente fixa para manter o padrao consistente
+        for (int row = 0; row < GRID_ROWS; row++) {
+            for (int col = 0; col < GRID_COLS; col++) {
+                if (rng.nextFloat() < 0.75f) {
+                    floorGrid[row][col] = 0; // floor_1.png
+                } else {
+                    floorGrid[row][col] = 1 + rng.nextInt(7); // floor_2 a floor_8
+                }
+            }
+        }
+    }
+
+    private Texture loadSingleTexture(String fileName) {
+        Texture tex = new Texture(Gdx.files.internal("assets/frames/" + fileName));
+        loadedTextures.add(tex);
+        return tex;
+    }
+
     private Animation< Texture > loadAnimation(String prefix, float frameDuration) {
         Texture[] frames = new Texture[4];
         for (int i = 0; i < 4; i++) {
-            Texture tex = new Texture(Gdx.files.internal("assets/frames/" + prefix + "_anim_f" + i + ".png"));
-            frames[i] = tex;
-            loadedTextures.add(tex);
+            frames[i] = loadSingleTexture(prefix + "_anim_f" + i + ".png");
         }
         Animation< Texture > animation = new Animation<>(frameDuration, frames);
         animation.setPlayMode(Animation.PlayMode.LOOP);
@@ -153,7 +195,15 @@ public class AutoDelverGame extends ApplicationAdapter {
         ScreenUtils.clear(BACKGROUND);
         viewport.apply();
 
-        // 1. FORMAS GEOMETRICAS (Fundo da HUD, bordas e barras de vida)
+        // 1. CENARIO DE FUNDO E SPRITES DOS PERSONAGENS
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        drawDungeonBackground();
+        drawPartySprites(heroParty, HERO_X, false);
+        drawPartySprites(enemyParty, ENEMY_X, true);
+        batch.end();
+
+        // 2. FORMAS GEOMETRICAS (Fundo da HUD, bordas e barras de vida por cima do cenario)
         shapeRenderer.setProjectionMatrix(camera.combined);
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -166,14 +216,37 @@ public class AutoDelverGame extends ApplicationAdapter {
         drawHudBorder();
         shapeRenderer.end();
 
-        // 2. TEXTURAS E TEXTO (Sprites, texto flutuante e narrativa do log)
-        batch.setProjectionMatrix(camera.combined);
+        // 3. TEXTOS EM PRIMEIRO PLANO (Numeros flutuantes e texto do log na HUD)
         batch.begin();
-        drawPartySprites(heroParty, HERO_X, false);
-        drawPartySprites(enemyParty, ENEMY_X, true);
         drawFloatingTexts();
         drawHudText();
         batch.end();
+    }
+
+    private void drawDungeonBackground() {
+        batch.setColor(DUNGEON_TINT);
+
+        // Desenha o piso da linha 0 ate a linha 9 (ate Y = 160)
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < GRID_COLS; col++) {
+                Texture tile = floorTiles[floorGrid[row][col]];
+                batch.draw(tile, col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+
+        // Desenha a parede de fundo na linha 9 (Y = 144) e a borda superior em Y = 160
+        for (int col = 0; col < GRID_COLS; col++) {
+            float x = col * TILE_SIZE;
+            // Estandartes vermelhos decorativos em colunas simetricas
+            if (col == 4 || col == 9 || col == 10 || col == 15) {
+                batch.draw(wallBannerRed, x, 9 * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else {
+                batch.draw(wallMid, x, 9 * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+            batch.draw(wallTopMid, x, 10 * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+
+        batch.setColor(Color.WHITE);
     }
 
     private void updateReplay(float delta) {
@@ -194,18 +267,15 @@ public class AutoDelverGame extends ApplicationAdapter {
             flashTargetId = log.targetId();
             flashTimer = FLASH_DURATION;
 
-            // Atualiza o texto narrativo na HUD
             String defeatedText = log.targetDefeated() ? " (Derrotado!)" : "";
             currentLogText = log.attackerName() + " atacou " + log.targetName()
                     + " causando " + log.damageDealt() + " de dano" + defeatedText;
 
-            // Se for o ultimo log, determina o vencedor pelo HP exibido na tela
             if (nextLogIndex >= history.size()) {
                 boolean heroesWon = isPartyAlive(heroParty);
                 currentLogText = heroesWon ? "Vitoria dos Herois! Masmorra concluida." : "Derrota! A equipe sucumbiu.";
             }
 
-            // Dispara o dano flutuante
             if (log.damageDealt() > 0) {
                 float[] targetPos = getCombatantCoordinates(log.targetId());
                 floatingTexts.add(new FloatingText(
@@ -265,7 +335,7 @@ public class AutoDelverGame extends ApplicationAdapter {
 
     private float[] getCombatantCoordinates(String id) {
         List< Combatant > heroes = heroParty.getAllMembers();
-        float heroTopY = (VIRTUAL_HEIGHT + 24f) / 2f + ((heroes.size() - 1) * ROW_SPACING) / 2f;
+        float heroTopY = (VIRTUAL_HEIGHT + 12f) / 2f + ((heroes.size() - 1) * ROW_SPACING) / 2f;
         for (int i = 0; i < heroes.size(); i++) {
             if (heroes.get(i).getId().equals(id)) {
                 return new float[] { HERO_X, heroTopY - (i * ROW_SPACING) };
@@ -273,7 +343,7 @@ public class AutoDelverGame extends ApplicationAdapter {
         }
 
         List< Combatant > enemies = enemyParty.getAllMembers();
-        float enemyTopY = (VIRTUAL_HEIGHT + 24f) / 2f + ((enemies.size() - 1) * ROW_SPACING) / 2f;
+        float enemyTopY = (VIRTUAL_HEIGHT + 12f) / 2f + ((enemies.size() - 1) * ROW_SPACING) / 2f;
         for (int i = 0; i < enemies.size(); i++) {
             if (enemies.get(i).getId().equals(id)) {
                 return new float[] { ENEMY_X, enemyTopY - (i * ROW_SPACING) };
@@ -297,7 +367,7 @@ public class AutoDelverGame extends ApplicationAdapter {
     private void drawPartySprites(Party party, float x, boolean flipX) {
         List< Combatant > members = party.getAllMembers();
         float totalHeight = (members.size() - 1) * ROW_SPACING;
-        float topY = (VIRTUAL_HEIGHT + 24f) / 2f + totalHeight / 2f;
+        float topY = (VIRTUAL_HEIGHT + 12f) / 2f + totalHeight / 2f;
 
         for (int i = 0; i < members.size(); i++) {
             Combatant member = members.get(i);
@@ -326,7 +396,7 @@ public class AutoDelverGame extends ApplicationAdapter {
     private void drawPartyHpBars(Party party, float x) {
         List< Combatant > members = party.getAllMembers();
         float totalHeight = (members.size() - 1) * ROW_SPACING;
-        float topY = (VIRTUAL_HEIGHT + 24f) / 2f + totalHeight / 2f;
+        float topY = (VIRTUAL_HEIGHT + 12f) / 2f + totalHeight / 2f;
 
         for (int i = 0; i < members.size(); i++) {
             Combatant member = members.get(i);
