@@ -15,9 +15,7 @@ import com.nicolas.autodelver.domain.TurnLog;
 
 /**
  * Responsabilidade Unica: Controlar o estado da reproducao da batalha (linha do tempo,
- * leitura de atalhos do teclado, HP atual exibido na tela e temporizadores de efeitos).
- *
- * Esta classe e desacoplada do OpenGL (nao desenha nada diretamente).
+ * leitura de atalhos do teclado, HP atual exibido na tela, temporizadores e disparo de eventos).
  */
 public class ReplayController {
 
@@ -41,9 +39,10 @@ public class ReplayController {
     private float stateTime = 0f;
     private String currentLogText = "Iniciando simulacao de batalha...";
 
-    // Controles de reproducao (Pausa e Velocidade)
+    // Controles de reproducao (Pausa, Velocidade e Audio)
     private boolean paused = false;
     private float speedMultiplier = 1.0f;
+    private boolean muted = false;
 
     // Efeitos temporarios de combate (Flash, Dash e Screen Shake)
     private float flashTimer = 0f;
@@ -109,13 +108,18 @@ public class ReplayController {
             }
         }
 
+        // Tecla M: Ativa ou desativa os efeitos sonoros (Mute)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {
+            muted = !muted;
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             restartReplay();
         }
     }
 
-    // Atualiza todos os relogios da simulacao baseando-se no delta time do frame
-    public void update(float rawDelta) {
+    // Atualiza todos os relogios da simulacao e dispara efeitos sonoros quando necessario
+    public void update(float rawDelta, BattleAssets assets) {
         // O relogio de respiracao (stateTime) nunca pausa para manter os sprites vivos
         stateTime += rawDelta;
 
@@ -153,13 +157,21 @@ public class ReplayController {
             dashAttackerId = log.attackerId();
             dashTimer = DASH_DURATION;
 
-            // 3. Dispara o tremor de tela (Screen Shake) se houve abate ou golpe forte
+            // 3. Dispara o tremor de tela (Screen Shake) e o efeito sonoro do golpe/abate
             if (log.targetDefeated()) {
                 shakeIntensity = 3.0f;
                 shakeTimer = 0.25f;
-            } else if (log.damageDealt() >= 12) {
-                shakeIntensity = 1.5f;
-                shakeTimer = 0.12f;
+                if (!muted && assets != null) {
+                    assets.playKillSound();
+                }
+            } else {
+                if (log.damageDealt() >= 12) {
+                    shakeIntensity = 1.5f;
+                    shakeTimer = 0.12f;
+                }
+                if (!muted && assets != null) {
+                    assets.playHitSound();
+                }
             }
 
             // 4. Formata a mensagem da HUD inferior
@@ -167,14 +179,23 @@ public class ReplayController {
             currentLogText = log.attackerName() + " atacou " + log.targetName()
                     + " causando " + log.damageDealt() + " de dano" + defeatedText;
 
+            // 5. Verifica se a batalha chegou ao ultimo turno para tocar a fanfarra final
             if (nextLogIndex >= history.size()) {
                 boolean heroesWon = isPartyAlive(heroParty);
                 currentLogText = heroesWon
                         ? "Vitoria dos Herois! (Aperte R para rever)"
                         : "Derrota! A equipe sucumbiu. (Aperte R para rever)";
+
+                if (!muted && assets != null) {
+                    if (heroesWon) {
+                        assets.playVictorySound();
+                    } else {
+                        assets.playDefeatSound();
+                    }
+                }
             }
 
-            // 5. Instancia o numero de dano flutuante sobre a cabeca do alvo
+            // 6. Instancia o numero de dano flutuante sobre a cabeca do alvo
             if (log.damageDealt() > 0) {
                 float[] targetPos = DungeonRenderer.getCombatantCoordinates(log.targetId(), heroParty, enemyParty);
                 floatingTexts.add(new FloatingText(
@@ -208,7 +229,6 @@ public class ReplayController {
         return false;
     }
 
-    // Calcula o deslocamento horizontal (em pixels) do atacante durante a investida (Dash)
     public float getDashOffsetX(String combatantId, boolean isEnemyTeam) {
         if (dashTimer <= 0f || !combatantId.equals(dashAttackerId)) {
             return 0f;
@@ -250,6 +270,10 @@ public class ReplayController {
         return speedMultiplier;
     }
 
+    public boolean isMuted() {
+        return muted;
+    }
+
     public boolean isShaking() {
         return shakeTimer > 0f;
     }
@@ -262,7 +286,6 @@ public class ReplayController {
         return floatingTexts;
     }
 
-    // Estrutura de dados que representa um numero de dano subindo na tela
     public static class FloatingText {
         private final String text;
         private final float x;

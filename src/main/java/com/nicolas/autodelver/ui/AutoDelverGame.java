@@ -69,9 +69,9 @@ public class AutoDelverGame extends ApplicationAdapter {
 
     @Override
     public void render() {
-        // 1. Entrada e atualizacao de estado logico
+        // 1. Entrada e atualizacao de estado logico (passando assets para disparo de sons)
         replayController.handleInput();
-        replayController.update(Gdx.graphics.getDeltaTime());
+        replayController.update(Gdx.graphics.getDeltaTime(), assets);
 
         // 2. Preparacao da tela e camera
         ScreenUtils.clear(BACKGROUND);

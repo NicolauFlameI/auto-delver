@@ -132,10 +132,11 @@ public class HudRenderer {
 
     private void drawControlStatus(SpriteBatch batch, BitmapFont statusFont, ReplayController controller) {
         String stateLabel = controller.isPaused() ? "PAUSADO" : "RODANDO";
+        String soundLabel = controller.isMuted() ? "MUDO" : "SOM";
         int speedInt = (int) controller.getSpeedMultiplier();
-        String statusText = "[" + speedInt + "x] [" + stateLabel + "]  Espaco: Pausa | V (ou 1/2/4): Vel | R: Reset";
+        String statusText = "[" + speedInt + "x] [" + stateLabel + "] [" + soundLabel + "]  Espaco: Pausa | V: Vel | M: Som | R: Reset";
 
         statusFont.setColor(STATUS_TEXT_COLOR);
-        statusFont.draw(batch, statusText, 14f, DungeonRenderer.VIRTUAL_HEIGHT - 5f);
+        statusFont.draw(batch, statusText, 10f, DungeonRenderer.VIRTUAL_HEIGHT - 5f);
     }
 }

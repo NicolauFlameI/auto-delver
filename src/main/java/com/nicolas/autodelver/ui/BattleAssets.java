@@ -2,8 +2,10 @@ package com.nicolas.autodelver.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -12,18 +14,19 @@ import com.badlogic.gdx.utils.Disposable;
 import com.nicolas.autodelver.domain.Combatant;
 
 /**
- * Responsabilidade Unica: Carregar, fornecer e descartar da memoria da GPU (VRAM)
- * todos os recursos visuais (Texturas, Animacoes e Fontes) da tela de batalha.
+ * Responsabilidade Unica: Carregar, fornecer e descartar da memoria (VRAM e OpenAL)
+ * todos os recursos visuais (Texturas, Animacoes, Fontes) e sonoros (Sound) da batalha.
  *
- * IMPORTANTE: Esta classe deve ser instanciada apenas dentro do metodo create()
- * do LibGDX, pois precisa do contexto OpenGL ativo para carregar imagens.
+ * IMPORTANTE: Deve ser instanciada apenas dentro do metodo create() do LibGDX.
  */
 public class BattleAssets implements Disposable {
 
     private static final float IDLE_FRAME_DURATION = 0.15f;
 
-    // Lista centralizada para garantir que nenhuma textura fique vazando memoria (memory leak)
+    // Listas centralizadas para garantir descarte completo no dispose()
     private final List< Texture > loadedTextures = new ArrayList< >();
+    private final List< Sound > loadedSounds = new ArrayList< >();
+    private final Random pitchRng = new Random();
 
     // Texturas do cenario (Masmorra)
     private final Texture[] floorTiles;
@@ -42,6 +45,12 @@ public class BattleAssets implements Disposable {
     private final BitmapFont damageFont;
     private final BitmapFont logFont;
     private final BitmapFont statusFont;
+
+    // Efeitos sonoros (carregados inteiramente em memoria RAM para baixa latencia)
+    private final Sound hitSound;
+    private final Sound killSound;
+    private final Sound victorySound;
+    private final Sound defeatSound;
 
     public BattleAssets() {
         // 1. Configura as fontes em escalas adequadas para a resolucao virtual 320x180
@@ -72,12 +81,24 @@ public class BattleAssets implements Disposable {
         esqueletoIdle = loadAnimation("skelet_idle", IDLE_FRAME_DURATION);
         goblinIdle = loadAnimation("goblin_idle", IDLE_FRAME_DURATION);
         orcIdle = loadAnimation("orc_warrior_idle", IDLE_FRAME_DURATION);
+
+        // 4. Carrega os efeitos sonoros 8-bit da pasta assets/sounds/
+        hitSound = loadSingleSound("hit.wav");
+        killSound = loadSingleSound("kill.wav");
+        victorySound = loadSingleSound("victory.wav");
+        defeatSound = loadSingleSound("defeat.wav");
     }
 
     private Texture loadSingleTexture(String fileName) {
         Texture tex = new Texture(Gdx.files.internal("assets/frames/" + fileName));
         loadedTextures.add(tex);
         return tex;
+    }
+
+    private Sound loadSingleSound(String fileName) {
+        Sound sound = Gdx.audio.newSound(Gdx.files.internal("assets/sounds/" + fileName));
+        loadedSounds.add(sound);
+        return sound;
     }
 
     private Animation< Texture > loadAnimation(String prefix, float frameDuration) {
@@ -90,7 +111,6 @@ public class BattleAssets implements Disposable {
         return animation;
     }
 
-    // Mapeia o nome do combatente do Dominio para a sua respectiva animacao visual
     public Animation< Texture > getAnimationForCombatant(Combatant c) {
         String name = c.getName().toLowerCase();
         if (name.contains("paladino")) return paladinoIdle;
@@ -99,7 +119,26 @@ public class BattleAssets implements Disposable {
         if (name.contains("goblin")) return goblinIdle;
         if (name.contains("orc")) return orcIdle;
 
-        return paladinoIdle; // Fallback seguro
+        return paladinoIdle;
+    }
+
+    // Toca o som de golpe variando levemente o pitch (tom) entre 0.9x e 1.15x para soar mais natural
+    public void playHitSound() {
+        float randomPitch = 0.9f + pitchRng.nextFloat() * 0.25f;
+        // Parametros do play: (volume, pitch, pan)
+        hitSound.play(0.6f, randomPitch, 0f);
+    }
+
+    public void playKillSound() {
+        killSound.play(0.75f);
+    }
+
+    public void playVictorySound() {
+        victorySound.play(0.8f);
+    }
+
+    public void playDefeatSound() {
+        defeatSound.play(0.8f);
     }
 
     public Texture getFloorTile(int index) {
@@ -137,6 +176,10 @@ public class BattleAssets implements Disposable {
         statusFont.dispose();
         for (Texture tex : loadedTextures) {
             tex.dispose();
+        }
+        // Sons no OpenAL tambem ocupam memoria nativa fora da JVM e precisam de dispose()
+        for (Sound sound : loadedSounds) {
+            sound.dispose();
         }
     }
 }
